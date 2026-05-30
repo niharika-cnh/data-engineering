@@ -1,0 +1,20 @@
+--- ML Proof of Concept Results ---
+Total Transmissions Analyzed: 1951
+Total True Failures (Target=1): 1
+
+1. Unsupervised Anomaly Detection (Isolation Forest)
+Top 200 anomalies contained 0 true failures (baseline random expectation: 0.1).
+
+2. Random Forest Feature Importance
+Top 10 mathematically strongest predictors of failure:
+                                  Feature  Importance
+     Param_Reverse_CAL_OBT_VALUE_DevRatio    0.074341
+                               Value_mean    0.067191
+                      Deviation_Ratio_max    0.046847
+                        Out_Of_Bounds_sum    0.031974
+    Param_Reverse_FINAL_PRESSURE_DevRatio    0.030333
+       Param_PTO_BRAKE_TIME_(mS)_DevRatio    0.020211
+ Param_DIFF_LOCK_TORQUE_INCREASE_DevRatio    0.019431
+                                Value_std    0.017354
+Param_PFCSTANDBYINITIAL_PRESSURE_DevRatio    0.016002
+                                Value_min    0.013269

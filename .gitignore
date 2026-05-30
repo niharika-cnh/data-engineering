@@ -1,0 +1,9 @@
+1b_Zscore_calculation/clean/
+1b_Zscore_calculation/raw/
+!requirements.txt
+venv/
+.env/
+.venv/
+__pycache__/
+artifacts/
+.DS_Store

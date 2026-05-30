@@ -273,6 +273,7 @@ Hard-refresh browser (**Ctrl+F5**).
 - Google Fonts CDN used for Inter (offline fallback to system fonts)
 - CSS `:has()` used for card hover (modern browsers)
 - Confirm `.gitignore` excludes `artifacts/`, `.venv/`, `.env`, and large raw data before publishing to GitHub.
+- **Streamlit Cloud:** `.streamlit/config.toml` must use `headless = true`; `.streamlit/credentials.toml` skips the first-run email prompt. Pin Python with `.python-version` (e.g. `3.11`) — avoid 3.14 for LightGBM/SHAP stability.
 
 ---
 

@@ -60,3 +60,5 @@ backend_1a.py                         # legacy LLM helpers (still used by llm_cl
 img/                                  # CNH and Purdue logos
 .streamlit/config.toml                # theme + upload size
 ```
+
+See also [MIKE_RUN_GUIDE.md](MIKE_RUN_GUIDE.md) and [CHANGELOG_CNH_UPDATES.md](CHANGELOG_CNH_UPDATES.md).

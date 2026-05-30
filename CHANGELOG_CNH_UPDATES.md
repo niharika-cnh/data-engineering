@@ -433,3 +433,4 @@ Documented in **1B** expander *How to start Ollama locally* and in `MIKE_RUN_GUI
 | 2026-05-30 | Ollama local setup, 1B guardrails, `MIKE_RUN_GUIDE.md` |
 | 2026-05-30 | Default Ollama model `llama3.2:1b`; model preflight via /api/tags; `gemma3:27b-8` still supported |
 | 2026-05-31 | Changelog refresh: `category` vs `Classification`, llm_classify/ollama_client updates, 1B UI status/pull command, latest summary section |
+| 2026-05-31 | Git remote: [niharika-cnh/data-engineering](https://github.com/niharika-cnh/data-engineering) |

@@ -19,6 +19,70 @@ TARGET_BINARY = "binary_classification"
 
 VALID_TARGETS = (TARGET_COMPONENT, TARGET_GENERAL, TARGET_BINARY)
 
+_COMPONENTS_COLUMN_ALIASES: dict[str, list[str]] = {
+    "Component Description": ["component description"],
+    "Is Transmission Related": [
+        "is_transmission_related",
+        "is transmission related",
+    ],
+}
+
+_TRANSMISSION_RELATED_TRUE = {"Y", "y", 1, 1.0, "1", True}
+
+
+def _clean_column_name(name: str) -> str:
+    """Strip whitespace and UTF-8 BOM variants from spreadsheet headers."""
+    s = str(name).strip()
+    for bom in ("\ufeff", "\xef\xbb\xbf"):
+        if s.startswith(bom):
+            s = s[len(bom) :].strip()
+    return s
+
+
+def _strip_column_names(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df.columns = [_clean_column_name(c) for c in df.columns]
+    return df
+
+
+def _resolve_column_aliases(df: pd.DataFrame, aliases: dict[str, list[str]]) -> pd.DataFrame:
+    lower_to_actual = {c.lower(): c for c in df.columns}
+    rename_map: dict[str, str] = {}
+    for canonical, variants in aliases.items():
+        if canonical in df.columns:
+            continue
+        for variant in variants:
+            key = variant.lower()
+            if key in lower_to_actual:
+                rename_map[lower_to_actual[key]] = canonical
+                break
+    if rename_map:
+        df = df.rename(columns=rename_map)
+    return df
+
+
+def prepare_components_df(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Normalize the Unique Component Descriptions upload.
+
+    Accepts BOM-prefixed headers and snake_case ``is_transmission_related``.
+    """
+    df = _resolve_column_aliases(_strip_column_names(df), _COMPONENTS_COLUMN_ALIASES)
+    missing = [c for c in ("Component Description", "Is Transmission Related") if c not in df.columns]
+    if missing:
+        found = ", ".join(str(c) for c in df.columns)
+        raise ValueError(
+            "Component descriptions file is missing required columns: "
+            f"{', '.join(missing)}. Columns found: {found}"
+        )
+    return df
+
+
+def transmission_related_components(df: pd.DataFrame) -> list[str]:
+    """Return component descriptions flagged as transmission-related."""
+    mask = df["Is Transmission Related"].isin(_TRANSMISSION_RELATED_TRUE)
+    return df.loc[mask, "Component Description"].dropna().astype(str).tolist()
+
 
 @dataclass
 class TrainResult:
@@ -74,7 +138,17 @@ def attach_target(
     if target not in VALID_TARGETS:
         raise ValueError(f"target must be one of {VALID_TARGETS}, got {target}")
 
-    w = warranty_cleaned[["Transmission Number", "Component Description"]].copy()
+    warranty_cleaned = _strip_column_names(warranty_cleaned)
+    required = ("Transmission Number", "Component Description")
+    missing = [c for c in required if c not in warranty_cleaned.columns]
+    if missing:
+        found = ", ".join(str(c) for c in warranty_cleaned.columns)
+        raise ValueError(
+            "Cleaned warranty data is missing required columns: "
+            f"{', '.join(missing)}. Re-run 1A · Warranty Preparation. Columns found: {found}"
+        )
+
+    w = warranty_cleaned[list(required)].copy()
     w = w[w["Transmission Number"].astype(str) != "#"]
     w["Transmission Number"] = w["Transmission Number"].astype(str).str.strip().str.upper()
 

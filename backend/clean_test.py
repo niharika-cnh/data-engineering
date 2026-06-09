@@ -21,6 +21,53 @@ def _read_any(file) -> pd.DataFrame:
     return pd.read_excel(file)
 
 
+# Canonical names expected by the z-score pipeline (see 1b_Zscore_calculation notebook).
+_TEST_COLUMN_ALIASES: dict[str, list[str]] = {
+    "SerialNumber": ["Serial Number", "serialnumber", "SERIALNUMBER", "Transmission Number"],
+    "ModelNumber": ["Model Number", "modelnumber", "MODELNUMBER"],
+    "Test": ["test", "TEST", "Test Name", "test name"],
+    "Parameter": ["parameter", "PARAMETER", "Param", "param"],
+    "Value": ["value", "VALUE", "Measured Value", "measured value"],
+    "Minimum": ["minimum", "MINIMUM", "Min", "min", "Lower Limit", "lower limit", "Lower"],
+    "Maximum": ["maximum", "MAXIMUM", "Max", "max", "Upper Limit", "upper limit", "Upper"],
+}
+
+_REQUIRED_TEST_COLUMNS = ("Value", "Minimum", "Maximum", "Parameter", "Test", "SerialNumber")
+
+
+def _normalize_test_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Strip header quirks and map common raw column names to canonical names."""
+    df = df.copy()
+    df.columns = [str(c).strip().lstrip("\ufeff") for c in df.columns]
+
+    lower_to_actual = {c.lower(): c for c in df.columns}
+    rename_map: dict[str, str] = {}
+    for canonical, variants in _TEST_COLUMN_ALIASES.items():
+        if canonical in df.columns:
+            continue
+        for variant in variants:
+            key = variant.lower()
+            if key in lower_to_actual:
+                rename_map[lower_to_actual[key]] = canonical
+                break
+
+    if rename_map:
+        df = df.rename(columns=rename_map)
+    return df
+
+
+def _require_test_columns(df: pd.DataFrame) -> None:
+    missing = [c for c in _REQUIRED_TEST_COLUMNS if c not in df.columns]
+    if missing:
+        found = ", ".join(str(c) for c in df.columns)
+        raise ValueError(
+            "Test file is missing required columns: "
+            f"{', '.join(missing)}. "
+            f"Upload raw long-format test data with Value, Minimum, and Maximum limits "
+            f"(not the per-unit pivot export). Columns found: {found}"
+        )
+
+
 def compute_zscores(df: pd.DataFrame) -> pd.DataFrame:
     """Empirical z-score per Parameter group."""
     df = df.copy()
@@ -83,7 +130,8 @@ def clean_test_data(
     drop_missing_test_pct : float
         Drop test columns from the pivot that are missing for >X% of transmissions.
     """
-    df = _read_any(file)
+    df = _normalize_test_columns(_read_any(file))
+    _require_test_columns(df)
 
     if "SerialNumber" in df.columns:
         df["SerialNumber"] = df["SerialNumber"].astype(str).str.upper()

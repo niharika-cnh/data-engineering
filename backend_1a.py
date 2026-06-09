@@ -23,6 +23,17 @@ PLANT_KEYWORDS = [
     "not tightened properly",
     "not tightened",
     "overtightened",
+    # Added based on Mike's warranty claim review.
+    "poor paint",
+    "oil level",
+    "clamp loose",
+    "fluid leak",
+    "rubbing",
+    "not connected",
+    "bad hose clamp",
+    "kinked",
+    "damaged",
+    "low oil",
 ]
 
 MATERIAL_KEYWORDS = [

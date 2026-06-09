@@ -41,17 +41,18 @@ components_file = st.file_uploader(
     "Component descriptions (.csv)",
     type=["csv"],
     key="components_upload",
-    help="Columns: Component Description, Is Transmission Related",
+    help="Columns: Component Description + Is Transmission Related (or is_transmission_related with 1/0).",
 )
 
+_TARGET_LABELS = {
+    prediction.TARGET_COMPONENT: "Component description",
+    prediction.TARGET_GENERAL: "General warranty type",
+    prediction.TARGET_BINARY: "Failure vs. no failure",
+}
 target = st.radio(
     "Prediction target",
-    options=[
-        (prediction.TARGET_COMPONENT, "Component description"),
-        (prediction.TARGET_GENERAL, "General warranty type"),
-        (prediction.TARGET_BINARY, "Failure vs. no failure"),
-    ],
-    format_func=lambda x: x[1],
+    options=list(_TARGET_LABELS.keys()),
+    format_func=lambda key: _TARGET_LABELS[key],
     index=1,
 )
 
@@ -59,12 +60,12 @@ can_train = warranty is not None and test_pivot is not None and components_file 
 
 if st.button("Train models", type="primary", disabled=not can_train):
     try:
-        comp_df = pd.read_csv(components_file, encoding="unicode_escape")
-        tx_components = (
-            comp_df[comp_df["Is Transmission Related"].isin(["Y", 1, "1", True])]["Component Description"]
-            .dropna()
-            .tolist()
-        )
+        try:
+            components_raw = pd.read_csv(components_file, encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            components_raw = pd.read_csv(components_file, encoding="unicode_escape")
+        comp_df = prediction.prepare_components_df(components_raw)
+        tx_components = prediction.transmission_related_components(comp_df)
 
         with st.spinner("Preparing datasets…"):
             cvt_pivot, pt_pivot = prediction.split_cvt_powertrain(test_pivot)

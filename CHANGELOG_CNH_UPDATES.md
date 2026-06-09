@@ -2,7 +2,7 @@
 
 **Repository:** [niharika-cnh/data-engineering](https://github.com/niharika-cnh/data-engineering)  
 **Prepared for:** CNH stakeholders (e.g. Mike) and project teammates  
-**Last updated:** 2026-05-31
+**Last updated:** 2026-06-09
 
 ---
 
@@ -408,6 +408,103 @@ Documented in **1B** expander *How to start Ollama locally* and in `MIKE_RUN_GUI
 
 ---
 
+## 2026-06-09 — Local testing fixes and Mike plant keywords
+
+**Branch:** `feature/add-plant-keywords-mike-review`  
+**Scope:** Rule-based 1B keywords, 2B test upload robustness, Warranty Prediction upload/training fixes, local dependency verification. No changes to Z-score threshold logic, Pareto engine, or 2B pass/fail rules.
+
+---
+
+### Plant keyword updates from Mike review
+
+| Field | Detail |
+|-------|--------|
+| **File changed** | `backend_1a.py` (`PLANT_KEYWORDS`) |
+| **Keywords added** | `poor paint`, `oil level`, `clamp loose`, `fluid leak`, `rubbing`, `not connected`, `bad hose clamp`, `kinked`, `damaged`, `low oil` |
+| **Reason** | Mike reviewed warranty claims and identified additional assembly/process phrases that should route to **Plant** via rule-based classification before or alongside LLM fallback. |
+| **Note** | Improves rule-based Plant classification only. Does not replace a future include/exclude rules table. LLM/Ollama prompt logic is unchanged. |
+
+---
+
+### 2B · Test Analytics — column normalization (`KeyError: 'Maximum'`)
+
+| Location | Change |
+|----------|--------|
+| `backend/clean_test.py` | `_normalize_test_columns()` strips BOM/whitespace and maps common header aliases to canonical names (`Max` → `Maximum`, `Min` → `Minimum`, `Serial Number` → `SerialNumber`, etc.) |
+| `backend/clean_test.py` | `_require_test_columns()` raises a clear `ValueError` when required columns are missing (instead of a raw pandas `KeyError`) |
+
+**Symptom fixed:** Uploading test CSV/XLSX with alternate column names or BOM-prefixed headers caused `KeyError: 'Maximum'` on **2B · Test Analytics**.
+
+**User guidance:** Upload **raw long-format** test data (one row per measurement: `SerialNumber`, `Test`, `Parameter`, `Value`, `Minimum`, `Maximum`). Do **not** upload the per-unit pivot/summary export from a prior 2B run.
+
+---
+
+### Warranty Prediction — component file and target selection
+
+| Location | Change |
+|----------|--------|
+| `backend/prediction.py` | `prepare_components_df()` and `transmission_related_components()` normalize **Unique Component Descriptions** uploads |
+| `backend/prediction.py` | `_clean_column_name()` strips UTF-8 BOM from spreadsheet headers (`\ufeff` / `\xef\xbb\xbf`) |
+| `backend/prediction.py` | Accepts `is_transmission_related` (snake_case) as alias for `Is Transmission Related`; accepts `1` / `1.0` / `Y` as transmission-related flags |
+| `backend/prediction.py` | `attach_target()` validates cleaned warranty has `Transmission Number` and `Component Description` before merge |
+| `pages/4_Warranty_Prediction.py` | Reads component CSV with `utf-8-sig` first (Excel export BOM); falls back to `unicode_escape` |
+| `pages/4_Warranty_Prediction.py` | **Prediction target** radio now passes target key string (`general_warranty_type`, etc.) instead of a `(key, label)` tuple |
+
+**Symptoms fixed:**
+
+| Error | Cause | Fix |
+|-------|--------|-----|
+| `Training failed: 'Component Description'` | BOM-prefixed column name in uploaded CSV | BOM stripping + `utf-8-sig` read |
+| `target must be one of (...), got ('general_warranty_type', 'General warranty type')` | `st.radio` returned full tuple from options | Radio options are target key strings; labels via `format_func` |
+
+**Verified with:** `Input Files/Unique Components Descs.csv` — 98 transmission-related components detected (`Is Transmission Related` = `1`).
+
+---
+
+### Local environment — missing Python packages
+
+During local testing, several pages failed with `ModuleNotFoundError` because dependencies in `requirements.txt` were not installed in the active Python 3.11 environment:
+
+| Package | Pages affected |
+|---------|----------------|
+| `matplotlib`, `seaborn` | **2A · Plant Pareto Analysis** |
+| `lightgbm`, `scikit-learn`, `shap` (+ `scipy`, `numba`, etc.) | **Warranty Prediction** |
+
+**One-time local setup:**
+
+```powershell
+cd f2025_s2026_wl_cnh_dataengineering-main
+python -m pip install -r requirements.txt
+streamlit run app.py
+```
+
+No `requirements.txt` changes were required — packages were already listed.
+
+---
+
+### How to test — 2026-06-09 changes
+
+| Step | Page | Action |
+|------|------|--------|
+| 1 | **1B · Claim Classification** | Re-run classification; confirm new Plant keywords classify as `rule` with `classify_source=rule` when dealer comments match |
+| 2 | **2B · Test Analytics** | Upload raw test file (e.g. `4Q24-1Q26.csv`); confirm **Process test data** completes without `Maximum` error |
+| 3 | **2A · Plant Pareto Analysis** | Confirm page loads (requires `matplotlib` / `seaborn`) |
+| 4 | **Warranty Prediction** | After **1A** + **2B**, upload `Unique Components Descs.csv`, select **General warranty type**, click **Train models** |
+
+---
+
+## Latest changes summary (2026-06-09)
+
+| Area | Change |
+|------|--------|
+| **1B Plant keywords** | 10 Mike-review phrases added to `PLANT_KEYWORDS` in `backend_1a.py` |
+| **2B test upload** | Column alias + BOM normalization; clearer error when wrong file format uploaded |
+| **Warranty Prediction** | Component CSV BOM/alias handling; prediction target radio tuple bug fixed |
+| **Local setup** | Run `pip install -r requirements.txt` before first local test (matplotlib, lightgbm, shap, etc.) |
+| **Branch** | Work on `feature/add-plant-keywords-mike-review`; not merged to `main` yet |
+
+---
+
 ## Latest changes summary (2026-05-31)
 
 | Area | Change |
@@ -434,3 +531,6 @@ Documented in **1B** expander *How to start Ollama locally* and in `MIKE_RUN_GUI
 | 2026-05-30 | Default Ollama model `llama3.2:1b`; model preflight via /api/tags; `gemma3:27b-8` still supported |
 | 2026-05-31 | Changelog refresh: `category` vs `Classification`, llm_classify/ollama_client updates, 1B UI status/pull command, latest summary section |
 | 2026-05-31 | Git remote: [niharika-cnh/data-engineering](https://github.com/niharika-cnh/data-engineering) |
+| 2026-06-09 | Plant keyword updates from Mike review (`feature/add-plant-keywords-mike-review`) |
+| 2026-06-09 | 2B test column normalization (`backend/clean_test.py`); Warranty Prediction CSV BOM + target radio fix |
+| 2026-06-09 | Local testing notes: `pip install -r requirements.txt` for matplotlib / lightgbm / shap |
